@@ -124,7 +124,20 @@ function getAllBlogs($db) {
                 $books_stmt = $db->prepare($books_query);
                 $books_stmt->bindParam(':blog_id', $blog['id'], PDO::PARAM_INT);
                 $books_stmt->execute();
-                $blog['related_books'] = $books_stmt->fetchAll(PDO::FETCH_ASSOC);
+                $related_books = $books_stmt->fetchAll(PDO::FETCH_ASSOC);
+                // Format the related books data
+                $blog['related_books'] = array_map(function($book) {
+                    return [
+                        'id' => (int)$book['id'],
+                        'blog_id' => (int)$book['blog_id'],
+                        'title' => $book['title'],
+                        'author' => $book['author'],
+                        'purchase_link' => $book['purchase_link'],
+                        'cover_image' => $book['cover_image'],
+                        'description' => $book['description'],
+                        'price' => $book['price']
+                    ];
+                }, $related_books);
             }
         }
         
@@ -173,10 +186,24 @@ function getBlogById($db, $id) {
         $books_stmt = $db->prepare($books_query);
         $books_stmt->bindParam(':blog_id', $id, PDO::PARAM_INT);
         $books_stmt->execute();
-        $related_books = $books_stmt->fetchAll();
+        $related_books = $books_stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Format the related books data
+        $formatted_books = array_map(function($book) {
+            return [
+                'id' => (int)$book['id'],
+                'blog_id' => (int)$book['blog_id'],
+                'title' => $book['title'],
+                'author' => $book['author'],
+                'purchase_link' => $book['purchase_link'],
+                'cover_image' => $book['cover_image'],
+                'description' => $book['description'],
+                'price' => $book['price']
+            ];
+        }, $related_books);
         
         $blog = formatBlog($blog);
-        $blog['related_books'] = $related_books;
+        $blog['related_books'] = $formatted_books;
         
         sendResponse(['blog' => $blog]);
         
@@ -215,10 +242,24 @@ function getBlogBySlug($db, $slug) {
         $books_stmt = $db->prepare($books_query);
         $books_stmt->bindParam(':blog_id', $blog['id'], PDO::PARAM_INT);
         $books_stmt->execute();
-        $related_books = $books_stmt->fetchAll();
+        $related_books = $books_stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Format the related books data
+        $formatted_books = array_map(function($book) {
+            return [
+                'id' => (int)$book['id'],
+                'blog_id' => (int)$book['blog_id'],
+                'title' => $book['title'],
+                'author' => $book['author'],
+                'purchase_link' => $book['purchase_link'],
+                'cover_image' => $book['cover_image'],
+                'description' => $book['description'],
+                'price' => $book['price']
+            ];
+        }, $related_books);
         
         $blog = formatBlog($blog);
-        $blog['related_books'] = $related_books;
+        $blog['related_books'] = $formatted_books;
         
         sendResponse(['blog' => $blog]);
         
