@@ -1,4 +1,10 @@
 <?php
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('log_errors', 1);
+ini_set('error_log', '/tmp/php_errors.log');
+
 require_once 'config.php';
 require_once 'auth.php';
 
@@ -36,6 +42,10 @@ switch ($method) {
 }
 
 function addBlog($db) {
+    // Log the incoming request data for debugging
+    error_log('POST data: ' . print_r($_POST, true));
+    error_log('FILES data: ' . print_r($_FILES, true));
+    
     try {
         // Get form data
         $title = isset($_POST['title']) ? sanitizeInput($_POST['title']) : null;
@@ -48,9 +58,21 @@ function addBlog($db) {
         $is_featured = isset($_POST['is_featured']) ? (bool)$_POST['is_featured'] : false;
         $status = isset($_POST['status']) ? sanitizeInput($_POST['status']) : 'draft';
         
-        // Validation
-        if (!$title || !$content || !$category_id) {
-            sendResponse(['error' => 'Title, content, and category are required'], 400);
+        // Enhanced validation with detailed error messages
+        $errors = [];
+        if (!$title || trim($title) === '') {
+            $errors[] = 'Title is required and cannot be empty';
+        }
+        if (!$content || trim($content) === '') {
+            $errors[] = 'Content is required and cannot be empty';
+        }
+        if (!$category_id || !is_numeric($category_id)) {
+            $errors[] = 'Valid category is required';
+        }
+        
+        if (!empty($errors)) {
+            error_log('Validation errors: ' . implode(', ', $errors));
+            sendResponse(['error' => 'Validation failed', 'details' => $errors], 422);
         }
         
         // Generate slug
@@ -131,7 +153,13 @@ function addBlog($db) {
         sendResponse(['message' => 'Blog created successfully', 'blog_id' => $blog_id, 'slug' => $slug], 201);
         
     } catch (PDOException $e) {
-        sendResponse(['error' => 'Failed to create blog: ' . $e->getMessage()], 500);
+        error_log('PDO Exception in addBlog: ' . $e->getMessage());
+        error_log('PDO Error trace: ' . $e->getTraceAsString());
+        sendResponse(['error' => 'Database error occurred', 'details' => $e->getMessage()], 500);
+    } catch (Exception $e) {
+        error_log('General Exception in addBlog: ' . $e->getMessage());
+        error_log('Error trace: ' . $e->getTraceAsString());
+        sendResponse(['error' => 'An unexpected error occurred', 'details' => $e->getMessage()], 500);
     }
 }
 
@@ -270,7 +298,13 @@ function updateBlog($db) {
         sendResponse(['message' => 'Blog updated successfully']);
         
     } catch (PDOException $e) {
-        sendResponse(['error' => 'Failed to update blog: ' . $e->getMessage()], 500);
+        error_log('PDO Exception in updateBlog: ' . $e->getMessage());
+        error_log('PDO Error trace: ' . $e->getTraceAsString());
+        sendResponse(['error' => 'Database error occurred while updating', 'details' => $e->getMessage()], 500);
+    } catch (Exception $e) {
+        error_log('General Exception in updateBlog: ' . $e->getMessage());
+        error_log('Error trace: ' . $e->getTraceAsString());
+        sendResponse(['error' => 'An unexpected error occurred while updating', 'details' => $e->getMessage()], 500);
     }
 }
 
@@ -288,7 +322,13 @@ function deleteBlog($db, $id) {
         }
         
     } catch (PDOException $e) {
-        sendResponse(['error' => 'Failed to delete blog: ' . $e->getMessage()], 500);
+        error_log('PDO Exception in deleteBlog: ' . $e->getMessage());
+        error_log('PDO Error trace: ' . $e->getTraceAsString());
+        sendResponse(['error' => 'Database error occurred while deleting', 'details' => $e->getMessage()], 500);
+    } catch (Exception $e) {
+        error_log('General Exception in deleteBlog: ' . $e->getMessage());
+        error_log('Error trace: ' . $e->getTraceAsString());
+        sendResponse(['error' => 'An unexpected error occurred while deleting', 'details' => $e->getMessage()], 500);
     }
 }
 
@@ -324,13 +364,20 @@ function addRelatedBooks($db, $blog_id, $books) {
                     }
                 }
                 
+                // Prepare variables for binding
+                $title = $book['title'];
+                $author = $book['author'] ?? '';
+                $purchase_link = $book['purchase_link'];
+                $description = $book['description'] ?? '';
+                $price = $book['price'] ?? '';
+                
                 $insert_stmt->bindParam(':blog_id', $blog_id, PDO::PARAM_INT);
-                $insert_stmt->bindParam(':title', $book['title']);
-                $insert_stmt->bindParam(':author', $book['author'] ?? '');
-                $insert_stmt->bindParam(':purchase_link', $book['purchase_link']);
+                $insert_stmt->bindParam(':title', $title);
+                $insert_stmt->bindParam(':author', $author);
+                $insert_stmt->bindParam(':purchase_link', $purchase_link);
                 $insert_stmt->bindParam(':cover_image', $cover_image);
-                $insert_stmt->bindParam(':description', $book['description'] ?? '');
-                $insert_stmt->bindParam(':price', $book['price'] ?? '');
+                $insert_stmt->bindParam(':description', $description);
+                $insert_stmt->bindParam(':price', $price);
                 $insert_stmt->execute();
             }
         }
